@@ -5,39 +5,41 @@ const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
 });
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 // Handle CORS preflight requests
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: corsHeaders,
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { externalUserId, externalUserData } = await req.json();
-    
+
     if (!externalUserId || !externalUserData) {
-      return NextResponse.json("Missing required parameters", { 
-        status: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
-      });
+      return NextResponse.json(
+        { error: 'Missing required parameters' },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    // Check if user already exists
+    // 🔹 Check if user already exists by externalId
+    const users = await clerk.users.getUserList({
+      externalId: [externalUserId],
+    });
+
     let clerkUser;
-    try {
-      clerkUser = await clerk.users.getUser({ externalId: externalUserId });
-    } catch (error) {
-      // User doesn't exist, create new one
+    if (users.length > 0) {
+      clerkUser = users[0];
+    } else {
+      // 🔹 Create user if not exists
       clerkUser = await clerk.users.createUser({
         externalId: externalUserId,
         emailAddress: [externalUserData.email],
@@ -47,36 +49,29 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Generate session token
-    const sessionToken = await clerk.sessions.createSession({
+    // 🔹 Create session
+    const session = await clerk.sessions.createSession({
       userId: clerkUser.id,
       expiresInSeconds: 60 * 60 * 24 * 7, // 7 days
     });
 
-    return NextResponse.json({ 
-      sessionToken: sessionToken.token,
-      clerkUserId: clerkUser.id,
-      success: true
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    // 🔹 Create session token (JWT)
+    const token = await clerk.sessions.createSessionToken(session.id);
+
+    return NextResponse.json(
+      {
+        sessionId: session.id,
+        sessionToken: token.jwt,
+        clerkUserId: clerkUser.id,
+        success: true,
       },
-    });
+      { headers: corsHeaders }
+    );
   } catch (err) {
     console.error('Failed to create Clerk session:', err);
-    return NextResponse.json("Failed to create session", { 
-      status: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
+    return NextResponse.json(
+      { error: 'Failed to create session' },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
-
-
-
-
