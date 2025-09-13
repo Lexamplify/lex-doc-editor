@@ -22,8 +22,10 @@ export async function OPTIONS(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { externalUserId, externalUserData } = await req.json();
+    console.log('🔍 Auth request received:', { externalUserId, externalUserData });
 
     if (!externalUserId || !externalUserData) {
+      console.log('❌ Missing required parameters');
       return NextResponse.json(
         { error: 'Missing required parameters' },
         { status: 400, headers: corsHeaders }
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 🔹 Check if user already exists by externalId
+    console.log('🔍 Looking for existing user with externalId:', externalUserId);
     const users = await clerk.users.getUserList({
       externalId: [externalUserId],
     });
@@ -38,7 +41,9 @@ export async function POST(req: NextRequest) {
     let clerkUser;
     if (users.length > 0) {
       clerkUser = users[0];
+      console.log('✅ Found existing user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
     } else {
+      console.log('🔹 Creating new user...');
       // 🔹 Create user if not exists
       clerkUser = await clerk.users.createUser({
         externalId: externalUserId,
@@ -47,28 +52,33 @@ export async function POST(req: NextRequest) {
         lastName: externalUserData.lastName,
         imageUrl: externalUserData.avatar,
       });
+      console.log('✅ Created new user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
     }
 
     // 🔹 Create session
+    console.log('🔹 Creating session for user:', clerkUser.id);
     const session = await clerk.sessions.createSession({
       userId: clerkUser.id,
       expiresInSeconds: 60 * 60 * 24 * 7, // 7 days
     });
+    console.log('✅ Session created:', { sessionId: session.id });
 
     // 🔹 Create session token (JWT)
+    console.log('🔹 Creating session token...');
     const token = await clerk.sessions.createSessionToken(session.id);
+    console.log('✅ Session token created successfully');
 
-    return NextResponse.json(
-      {
-        sessionId: session.id,
-        sessionToken: token.jwt,
-        clerkUserId: clerkUser.id,
-        success: true,
-      },
-      { headers: corsHeaders }
-    );
+    const response = {
+      sessionId: session.id,
+      sessionToken: token.jwt,
+      clerkUserId: clerkUser.id,
+      success: true,
+    };
+    console.log('🎉 Auth response prepared:', { sessionId: response.sessionId, clerkUserId: response.clerkUserId });
+
+    return NextResponse.json(response, { headers: corsHeaders });
   } catch (err) {
-    console.error('Failed to create Clerk session:', err);
+    console.error('❌ Failed to create Clerk session:', err);
     return NextResponse.json(
       { error: 'Failed to create session' },
       { status: 500, headers: corsHeaders }
