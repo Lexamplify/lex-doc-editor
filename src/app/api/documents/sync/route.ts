@@ -1,16 +1,35 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Handle CORS preflight requests
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { documentId, content, externalDocumentId, externalSyncUrl } = await req.json();
     
     if (!documentId || !content) {
-      return new Response("Missing required parameters", { status: 400 });
+      return NextResponse.json("Missing required parameters", { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
     // Verify Clerk authentication
@@ -18,7 +37,14 @@ export async function POST(req: NextRequest) {
     const user = await currentUser();
     
     if (!sessionClaims || !user) {
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
     // Update document in Convex
@@ -53,13 +79,26 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    return Response.json({ 
+    return NextResponse.json({ 
       success: true,
       message: 'Document synced successfully'
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
   } catch (error) {
     console.error('Document sync error:', error);
-    return new Response("Sync failed", { status: 500 });
+    return NextResponse.json("Sync failed", { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 }
 

@@ -1,9 +1,21 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Handle CORS preflight requests
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +23,14 @@ export async function GET(req: NextRequest) {
     const documentId = searchParams.get('id');
     
     if (!documentId) {
-      return new Response("Missing document ID", { status: 400 });
+      return NextResponse.json("Missing document ID", { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
     // Verify Clerk authentication
@@ -19,14 +38,28 @@ export async function GET(req: NextRequest) {
     const user = await currentUser();
     
     if (!sessionClaims || !user) {
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
     // Get document
     const document = await convex.query(api.documents.getById, { id: documentId });
     
     if (!document) {
-      return new Response("Document not found", { status: 404 });
+      return NextResponse.json("Document not found", { 
+        status: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
     // Check permissions using Clerk organization data
@@ -39,10 +72,17 @@ export async function GET(req: NextRequest) {
     );
     
     if (!isOwner && !isOrganizationMember) {
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
     
-    return Response.json({
+    return NextResponse.json({
       id: document._id,
       title: document.title,
       content: document.initialContent,
@@ -54,10 +94,23 @@ export async function GET(req: NextRequest) {
         email: user.primaryEmailAddress?.emailAddress,
         avatar: user.imageUrl
       }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
   } catch (error) {
     console.error('External document access error:', error);
-    return new Response("Internal Server Error", { status: 500 });
+    return NextResponse.json("Internal Server Error", { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 }
 

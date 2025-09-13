@@ -1,9 +1,21 @@
 import { createClerkClient } from '@clerk/nextjs/server';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
 });
+
+// Handle CORS preflight requests
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,14 +46,27 @@ export async function POST(req: NextRequest) {
       expiresInSeconds: 60 * 60 * 24 * 7, // 7 days
     });
 
-    return Response.json({ 
+    return NextResponse.json({ 
       sessionToken: sessionToken.token,
       clerkUserId: clerkUser.id,
       success: true
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     });
   } catch (err) {
     console.error('Failed to create Clerk session:', err);
-    return new Response("Failed to create session", { status: 500 });
+    return NextResponse.json("Failed to create session", { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 }
 
