@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
           firstName: externalUserData.firstName,
           lastName: externalUserData.lastName || 'User', // Provide default if missing
           imageUrl: externalUserData.avatar,
+          password: 'temp_password_' + Math.random().toString(36).substring(7), // Generate temp password
+          skipPasswordChecks: true, // Skip password validation
         });
         console.log('✅ Created new user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
       } catch (createError: any) {
@@ -69,7 +71,27 @@ export async function POST(req: NextRequest) {
           errors: createError.errors,
           clerkTraceId: createError.clerkTraceId,
         });
-        throw createError;
+        
+        // If email already exists, try to find user by email
+        if (createError.errors?.[0]?.code === 'form_identifier_exists') {
+          console.log('🔍 Email already exists, looking for user by email...');
+          try {
+            const existingUsers = await clerk.users.getUserList({
+              emailAddress: [externalUserData.email],
+            });
+            if (existingUsers.length > 0) {
+              clerkUser = existingUsers[0];
+              console.log('✅ Found existing user by email:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
+            } else {
+              throw createError;
+            }
+          } catch (emailSearchError) {
+            console.error('❌ Failed to find user by email:', emailSearchError);
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
       }
     }
 
