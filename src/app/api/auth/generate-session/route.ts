@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // 🔹 Create session
     console.log('🔹 Creating session for user:', clerkUser.id);
-    const session = await clerk.sessions.createSession({
+    const session = await clerk.sessions.create({
       userId: clerkUser.id,
       expiresInSeconds: 60 * 60 * 24 * 7, // 7 days
     });
