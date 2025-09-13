@@ -44,15 +44,33 @@ export async function POST(req: NextRequest) {
       console.log('✅ Found existing user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
     } else {
       console.log('🔹 Creating new user...');
-      // 🔹 Create user if not exists
-      clerkUser = await clerk.users.createUser({
+      console.log('🔍 User data to create:', {
         externalId: externalUserId,
-        emailAddress: [externalUserData.email],
+        email: externalUserData.email,
         firstName: externalUserData.firstName,
         lastName: externalUserData.lastName,
-        imageUrl: externalUserData.avatar,
+        avatar: externalUserData.avatar,
       });
-      console.log('✅ Created new user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
+      
+      try {
+        // 🔹 Create user if not exists
+        clerkUser = await clerk.users.createUser({
+          externalId: externalUserId,
+          emailAddress: [externalUserData.email],
+          firstName: externalUserData.firstName,
+          lastName: externalUserData.lastName || 'User', // Provide default if missing
+          imageUrl: externalUserData.avatar,
+        });
+        console.log('✅ Created new user:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
+      } catch (createError: any) {
+        console.error('❌ User creation failed:', {
+          error: createError.message,
+          status: createError.status,
+          errors: createError.errors,
+          clerkTraceId: createError.clerkTraceId,
+        });
+        throw createError;
+      }
     }
 
     // 🔹 Create session
