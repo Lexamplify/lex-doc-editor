@@ -10,6 +10,7 @@ interface EmbedPageProps {
 }
 
 export default function EmbedPage({ params }: EmbedPageProps) {
+  const { documentId } = params;
   const searchParams = useSearchParams();
   const sessionToken = searchParams.get('token');
 

@@ -14,13 +14,23 @@ interface ClerkEmbeddableEditorProps {
 
 export function ClerkEmbeddableEditor({ 
   documentId, 
-  clerkSessionToken, 
   onSave, 
   onClose 
 }: ClerkEmbeddableEditorProps) {
   const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
-  const [document, setDocument] = useState<any>(null);
+  const [document, setDocument] = useState<{
+    id: string;
+    title: string;
+    content: string;
+    ownerId: string;
+    organizationId?: string;
+    clerkUserId: string;
+    userInfo: {
+      name: string;
+      email?: string;
+      avatar?: string;
+    };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

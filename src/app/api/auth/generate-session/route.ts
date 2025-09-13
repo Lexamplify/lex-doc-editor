@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
       clerkUserId: clerkUser.id,
       success: true
     });
-  } catch (error) {
-    console.error('Failed to create Clerk session:', error);
+  } catch (err) {
+    console.error('Failed to create Clerk session:', err);
     return new Response("Failed to create session", { status: 500 });
   }
 }
