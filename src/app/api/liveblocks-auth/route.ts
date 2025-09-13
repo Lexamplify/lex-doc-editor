@@ -2,26 +2,53 @@ import { Liveblocks } from "@liveblocks/node";
 import { ConvexHttpClient } from "convex/browser";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { api } from "../../../../convex/_generated/api";
+import { NextRequest, NextResponse } from 'next/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const liveblocks = new Liveblocks({
   secret: process.env.LIVEBLOCKS_SECRET_KEY!,
 });
 
-export async function POST(req: Request) {
+// Handle CORS preflight requests
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
+export async function POST(req: NextRequest) {
   try {
     const { sessionClaims } = await auth();
 
     if (!sessionClaims) {
       console.log("❌ No session claims found");
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
     const user = await currentUser();
 
     if (!user) {
       console.log("❌ No user found");
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
     const { room } = await req.json();
@@ -42,7 +69,14 @@ export async function POST(req: Request) {
 
     if (!document) {
       console.log("❌ Document not found:", room);
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
     console.log("📄 Document found:", { 
@@ -70,7 +104,14 @@ export async function POST(req: Request) {
 
     if (!isOwner && !isOrganizationMember) {
       console.log("❌ Access denied - user is neither owner nor organization member");
-      return new Response("Unauthorized", { status: 401 });
+      return NextResponse.json("Unauthorized", { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
     const name = user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "Anonymous";
@@ -91,9 +132,23 @@ export async function POST(req: Request) {
     const { body, status } = await session.authorize();
 
     console.log("🎉 Liveblocks session authorized successfully");
-    return new Response(body, { status });
+    return new NextResponse(body, { 
+      status,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   } catch (error) {
     console.error("❌ Liveblocks auth error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    return NextResponse.json("Internal Server Error", { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 }

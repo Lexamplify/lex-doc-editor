@@ -22,7 +22,14 @@ export async function POST(req: NextRequest) {
     const { externalUserId, externalUserData } = await req.json();
     
     if (!externalUserId || !externalUserData) {
-      return new Response("Missing required parameters", { status: 400 });
+      return NextResponse.json("Missing required parameters", { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
     }
 
     // Check if user already exists
