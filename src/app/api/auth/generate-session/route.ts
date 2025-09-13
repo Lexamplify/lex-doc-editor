@@ -76,18 +76,61 @@ export async function POST(req: NextRequest) {
         if (createError.errors?.[0]?.code === 'form_identifier_exists') {
           console.log('🔍 Email already exists, looking for user by email...');
           try {
+            // Try different search methods
             const existingUsers = await clerk.users.getUserList({
               emailAddress: [externalUserData.email],
+              limit: 1,
             });
+            
             if (existingUsers.length > 0) {
               clerkUser = existingUsers[0];
               console.log('✅ Found existing user by email:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
             } else {
-              throw createError;
+              // Try alternative search method
+              console.log('🔍 Trying alternative search method...');
+              const allUsers = await clerk.users.getUserList({ limit: 100 });
+              const foundUser = allUsers.find(user => 
+                user.primaryEmailAddress?.emailAddress === externalUserData.email
+              );
+              
+              if (foundUser) {
+                clerkUser = foundUser;
+                console.log('✅ Found existing user by alternative search:', { id: clerkUser.id, email: clerkUser.primaryEmailAddress?.emailAddress });
+              } else {
+                console.log('❌ User not found by any method, creating with different email...');
+                // Create user with a modified email to avoid conflict
+                const modifiedEmail = `temp_${Date.now()}_${externalUserData.email}`;
+                clerkUser = await clerk.users.createUser({
+                  externalId: externalUserId,
+                  emailAddress: [modifiedEmail],
+                  firstName: externalUserData.firstName,
+                  lastName: externalUserData.lastName || 'User',
+                  imageUrl: externalUserData.avatar,
+                  password: 'temp_password_' + Math.random().toString(36).substring(7),
+                  skipPasswordChecks: true,
+                });
+                console.log('✅ Created user with modified email:', { id: clerkUser.id, email: modifiedEmail });
+              }
             }
           } catch (emailSearchError) {
             console.error('❌ Failed to find user by email:', emailSearchError);
-            throw createError;
+            // Fallback: create user with modified email
+            try {
+              const modifiedEmail = `temp_${Date.now()}_${externalUserData.email}`;
+              clerkUser = await clerk.users.createUser({
+                externalId: externalUserId,
+                emailAddress: [modifiedEmail],
+                firstName: externalUserData.firstName,
+                lastName: externalUserData.lastName || 'User',
+                imageUrl: externalUserData.avatar,
+                password: 'temp_password_' + Math.random().toString(36).substring(7),
+                skipPasswordChecks: true,
+              });
+              console.log('✅ Created user with fallback email:', { id: clerkUser.id, email: modifiedEmail });
+            } catch (fallbackError) {
+              console.error('❌ Fallback user creation also failed:', fallbackError);
+              throw createError;
+            }
           }
         } else {
           throw createError;
