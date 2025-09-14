@@ -1,58 +1,42 @@
-'use client';
+import { auth } from "@clerk/nextjs/server";
+import { preloadQuery } from "convex/nextjs";
+import { redirect } from "next/navigation";
 
-import { useSearchParams } from 'next/navigation';
-import { ClerkProvider } from '@clerk/nextjs';
-import { ClerkEmbeddableEditor } from '@/components/clerk-embeddable-editor';
-import { ConvexClientProvider } from '@/components/convex-client-provider';
+import { Document } from "../../documents/[documentId]/document";
+import { Id } from "../../../../convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
 
 interface EmbedPageProps {
-  params: { documentId: string };
+  params: Promise<{ documentId: Id<"documents"> }>;
 }
 
-export default function EmbedPage({ params }: EmbedPageProps) {
-  const { documentId } = params;
-  const searchParams = useSearchParams();
-  const sessionToken = searchParams.get('token');
+const EmbedPage = async ({ params }: EmbedPageProps) => {
+  const { documentId } = await params;
 
-  if (!sessionToken) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unauthorized</h2>
-          <p className="text-gray-600">Missing session token</p>
-        </div>
-      </div>
-    );
+  const { getToken, userId } = await auth();
+  
+  // If user is not authenticated, redirect to sign-in
+  if (!userId) {
+    redirect("/sign-in");
   }
 
-  return (
-    <ClerkProvider>
-      <ConvexClientProvider>
-        <div className="h-screen w-full">
-          <ClerkEmbeddableEditor 
-            documentId={params.documentId}
-            clerkSessionToken={sessionToken}
-            onSave={(content) => {
-              // Handle save to your main database
-              console.log('Document saved:', content);
-              // Send message to parent window
-              window.parent.postMessage({ 
-                type: 'DOCUMENT_SAVED', 
-                content,
-                documentId: params.documentId
-              }, '*');
-            }}
-            onClose={() => {
-              // Handle close
-              window.parent.postMessage({ type: 'CLOSE_EDITOR' }, '*');
-            }}
-          />
-        </div>
-      </ConvexClientProvider>
-    </ClerkProvider>
+  const token = (await getToken({ template: "convex" })) ?? undefined;
+
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  const preloadedDocument = await preloadQuery(
+    api.documents.getById,
+    { id: documentId },
+    { token }
   );
-}
 
+  return (
+    <div className="h-screen w-full">
+      <Document preloadedDocument={preloadedDocument} />
+    </div>
+  );
+};
 
-
-
+export default EmbedPage;
