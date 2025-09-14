@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, XIcon } from "lucide-react";
+import { SearchIcon, XIcon, Loader2 } from "lucide-react";
 
 import { templates } from "@/constants/templates";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ImportDocument } from "@/components/import-document";
 import { processTemplateContentForConvex } from "@/lib/template-processor";
@@ -164,30 +164,27 @@ export const TemplatesGallery = () => {
   };
 
   // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (query: string) => {
-      if (!query.trim()) return;
-      
-      setIsSearching(true);
-      setSearchResults([]);
-      setShowSearchResults(true);
+  const debouncedSearch = debounce(async (query: string) => {
+    if (!query.trim()) return;
+    
+    setIsSearching(true);
+    setSearchResults([]);
+    setShowSearchResults(true);
 
-      try {
-        const results = await TemplateSearchService.searchTemplates(query);
-        setSearchResults(results);
+    try {
+      const results = await TemplateSearchService.searchTemplates(query);
+      setSearchResults(results);
 
-        if (results.length === 0) {
-          toast.error("No templates found for your search. Try different terms.");
-        }
-      } catch (error) {
-        console.error("Error searching templates:", error);
-        toast.error("Failed to search for templates. Please try again.");
-      } finally {
-        setIsSearching(false);
+      if (results.length === 0) {
+        toast.error("No templates found for your search. Try different terms.");
       }
-    }, 500),
-    [setIsSearching, setSearchResults, setShowSearchResults]
-  );
+    } catch (error) {
+      console.error("Error searching templates:", error);
+      toast.error("Failed to search for templates. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  }, 500);
 
   // Effect for debounced search
   useEffect(() => {
@@ -258,7 +255,7 @@ export const TemplatesGallery = () => {
                   <div
                     className={cn(
                       "aspect-[3/4] flex flex-col gap-y-2.5",
-                      isCreating && "pointer-events-none opacity-50"
+                      (isCreating || isCustomizing) && "pointer-events-none opacity-50"
                     )}
                   >
                     <button
@@ -270,8 +267,17 @@ export const TemplatesGallery = () => {
                         backgroundPosition: "center",
                         backgroundRepeat: "no-repeat",
                       }}
-                      className="size-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 transition flex flex-col items-center justify-center gap-y-4 bg-white"
-                    />
+                      className="size-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 transition flex flex-col items-center justify-center gap-y-4 bg-white relative"
+                    >
+                      {(isCreating || isCustomizing) && (
+                        <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center gap-y-2 rounded-sm">
+                          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                          <span className="text-sm font-medium text-blue-600">
+                            {isCreating ? "Creating..." : "Customizing..."}
+                          </span>
+                        </div>
+                      )}
+                    </button>
                     <p className="text-sm font-medium truncate">{template.label}</p>
                   </div>
                 </CarouselItem>

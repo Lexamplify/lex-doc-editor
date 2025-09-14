@@ -14,6 +14,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { processTemplateContentForConvex } from "@/lib/template-processor";
 import { fetchTemplateFromFirebase } from "@/lib/firebase-template-service";
 import { TemplateCustomizationModal } from "@/components/template-customization-modal";
@@ -247,14 +248,22 @@ export const TemplateSearchResults = ({
                 <div
                   className={cn(
                     "aspect-[3/4] flex flex-col gap-y-2.5",
-                    isCreating && "pointer-events-none opacity-50"
+                    (isCreating || isCustomizing) && "pointer-events-none opacity-50"
                   )}
                 >
                   <button
-                    disabled={isCreating}
+                    disabled={isCreating || isCustomizing}
                     onClick={() => onTemplateClick(template)}
-                    className="size-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 transition flex flex-col items-center justify-center gap-y-4 bg-white p-4"
+                    className="size-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 transition flex flex-col items-center justify-center gap-y-4 bg-white p-4 relative"
                   >
+                    {(isCreating || isCustomizing) && (
+                      <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center gap-y-2 rounded-sm">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                        <span className="text-sm font-medium text-blue-600">
+                          {isCreating ? "Creating..." : "Customizing..."}
+                        </span>
+                      </div>
+                    )}
                     <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                       <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
